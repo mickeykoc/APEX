@@ -451,6 +451,54 @@
       margin: 0 auto 24px;
     }
 
+    /* ─── Biometrics Grid ───────────────────────────────────────── */
+    #biometrics-section {
+      display: none;
+      margin-top: 16px;
+    }
+    #biometrics-section.visible { display: block; }
+    .biometrics-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .biometrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .bio-card {
+      background: #1a1a1a;
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .bio-name {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .bio-value {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      line-height: 1;
+    }
+    .bio-unit {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+    }
+
     /* ─── Sync Banner ───────────────────────────────────────────── */
     #sync-banner {
       display: none;
@@ -2029,6 +2077,33 @@
             Train as programmed. CNS is fresh.
           </div>
 
+          <!-- BIOMETRICS (shown only when synced from Apple Health) -->
+          <div id="biometrics-section">
+            <div class="biometrics-label">Biometrics</div>
+            <div class="biometrics-grid">
+              <div class="bio-card">
+                <div class="bio-name">Respiratory Rate</div>
+                <div class="bio-value" id="bio-resp">—</div>
+                <div class="bio-unit">breaths/min</div>
+              </div>
+              <div class="bio-card">
+                <div class="bio-name">Blood Oxygen</div>
+                <div class="bio-value" id="bio-spo2">—</div>
+                <div class="bio-unit">%</div>
+              </div>
+              <div class="bio-card">
+                <div class="bio-name">Active Calories</div>
+                <div class="bio-value" id="bio-calories">—</div>
+                <div class="bio-unit">kcal</div>
+              </div>
+              <div class="bio-card">
+                <div class="bio-name">Steps</div>
+                <div class="bio-value" id="bio-steps">—</div>
+                <div class="bio-unit">count</div>
+              </div>
+            </div>
+          </div>
+
           <button class="save-checkin-btn" id="save-checkin-btn">
             Save Check-In
           </button>
@@ -2629,6 +2704,19 @@
           updateReadinessUI(existing.sleep, existing.soreness, existing.motivation);
           const btn = document.getElementById('save-checkin-btn');
           if (btn) { btn.textContent = 'Saved Today'; btn.classList.add('saved'); }
+          // Restore biometrics grid if previously synced
+          const hasBio = existing.rawResp !== undefined || existing.rawSpo2 !== undefined ||
+                         existing.rawCalories !== undefined || existing.rawSteps !== undefined;
+          if (hasBio) {
+            const sec = document.getElementById('biometrics-section');
+            if (sec) {
+              if (existing.rawResp     !== undefined) { const el = document.getElementById('bio-resp');     if (el) el.textContent = existing.rawResp.toFixed(1); }
+              if (existing.rawSpo2     !== undefined) { const el = document.getElementById('bio-spo2');     if (el) el.textContent = existing.rawSpo2.toFixed(1); }
+              if (existing.rawCalories !== undefined) { const el = document.getElementById('bio-calories'); if (el) el.textContent = Math.round(existing.rawCalories); }
+              if (existing.rawSteps    !== undefined) { const el = document.getElementById('bio-steps');    if (el) el.textContent = Math.round(existing.rawSteps).toLocaleString(); }
+              sec.classList.add('visible');
+            }
+          }
         } else {
           updateReadinessUI(
             +document.getElementById('slider-sleep').value,
@@ -3699,13 +3787,18 @@
 
         // ── Apple Health URL params ───────────────────────────────
         (function applyHealthParams() {
-          const params = new URLSearchParams(window.location.search);
-          const hrv    = parseFloat(params.get('hrv'));
-          const rhr    = parseFloat(params.get('rhr'));
-          const sleep  = parseFloat(params.get('sleep'));
+          const params    = new URLSearchParams(window.location.search);
+          const hrv       = parseFloat(params.get('hrv'));
+          const rhr       = parseFloat(params.get('rhr'));
+          const sleep     = parseFloat(params.get('sleep'));
+          const resp      = parseFloat(params.get('resp'));
+          const spo2      = parseFloat(params.get('spo2'));
+          const calories  = parseFloat(params.get('calories'));
+          const steps     = parseFloat(params.get('steps'));
 
           // Need at least one valid param to do anything
-          if (isNaN(hrv) && isNaN(rhr) && isNaN(sleep)) return;
+          if (isNaN(hrv) && isNaN(rhr) && isNaN(sleep) &&
+              isNaN(resp) && isNaN(spo2) && isNaN(calories) && isNaN(steps)) return;
 
           // Map rhr → soreness proxy (higher RHR = more soreness)
           // Map sleep directly to the sleep slider (clamped 1–10)
@@ -3756,11 +3849,27 @@
             motivation: finalMotiv,
             status,
             source: 'apple-health',
-            rawHrv:   isNaN(hrv)   ? undefined : hrv,
-            rawRhr:   isNaN(rhr)   ? undefined : rhr,
-            rawSleep: isNaN(sleep) ? undefined : sleep,
+            rawHrv:      isNaN(hrv)      ? undefined : hrv,
+            rawRhr:      isNaN(rhr)      ? undefined : rhr,
+            rawSleep:    isNaN(sleep)    ? undefined : sleep,
+            rawResp:     isNaN(resp)     ? undefined : resp,
+            rawSpo2:     isNaN(spo2)     ? undefined : spo2,
+            rawCalories: isNaN(calories) ? undefined : calories,
+            rawSteps:    isNaN(steps)    ? undefined : steps,
           });
           save(data);
+
+          // Render biometrics grid if any of the 4 new params present
+          if (!isNaN(resp) || !isNaN(spo2) || !isNaN(calories) || !isNaN(steps)) {
+            const section = document.getElementById('biometrics-section');
+            if (section) {
+              if (!isNaN(resp))     { const el = document.getElementById('bio-resp');     if (el) el.textContent = resp.toFixed(1); }
+              if (!isNaN(spo2))     { const el = document.getElementById('bio-spo2');     if (el) el.textContent = spo2.toFixed(1); }
+              if (!isNaN(calories)) { const el = document.getElementById('bio-calories'); if (el) el.textContent = Math.round(calories); }
+              if (!isNaN(steps))    { const el = document.getElementById('bio-steps');    if (el) el.textContent = Math.round(steps).toLocaleString(); }
+              section.classList.add('visible');
+            }
+          }
 
           // Mark button as saved
           const btn = document.getElementById('save-checkin-btn');
