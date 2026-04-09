@@ -2082,9 +2082,9 @@
             <div class="biometrics-label">Biometrics</div>
             <div class="biometrics-grid">
               <div class="bio-card">
-                <div class="bio-name">Respiratory Rate</div>
-                <div class="bio-value" id="bio-resp">—</div>
-                <div class="bio-unit">breaths/min</div>
+                <div class="bio-name">HRV</div>
+                <div class="bio-value" id="bio-hrv">—</div>
+                <div class="bio-unit">ms</div>
               </div>
               <div class="bio-card">
                 <div class="bio-name">Blood Oxygen</div>
@@ -2705,12 +2705,14 @@
           const btn = document.getElementById('save-checkin-btn');
           if (btn) { btn.textContent = 'Saved Today'; btn.classList.add('saved'); }
           // Restore biometrics grid if previously synced
-          const hasBio = existing.rawResp !== undefined || existing.rawSpo2 !== undefined ||
-                         existing.rawCalories !== undefined || existing.rawSteps !== undefined;
+          const hasBio = existing.rawHrv !== undefined || existing.rawRhr !== undefined ||
+                         existing.rawSleep !== undefined || existing.rawResp !== undefined ||
+                         existing.rawSpo2 !== undefined || existing.rawCalories !== undefined ||
+                         existing.rawSteps !== undefined;
           if (hasBio) {
             const sec = document.getElementById('biometrics-section');
             if (sec) {
-              if (existing.rawResp     !== undefined) { const el = document.getElementById('bio-resp');     if (el) el.textContent = existing.rawResp.toFixed(1); }
+              if (existing.rawHrv      !== undefined) { const el = document.getElementById('bio-hrv');      if (el) el.textContent = Math.round(existing.rawHrv); }
               if (existing.rawSpo2     !== undefined) { const el = document.getElementById('bio-spo2');     if (el) el.textContent = existing.rawSpo2.toFixed(1); }
               if (existing.rawCalories !== undefined) { const el = document.getElementById('bio-calories'); if (el) el.textContent = Math.round(existing.rawCalories); }
               if (existing.rawSteps    !== undefined) { const el = document.getElementById('bio-steps');    if (el) el.textContent = Math.round(existing.rawSteps).toLocaleString(); }
@@ -3859,11 +3861,12 @@
           });
           save(data);
 
-          // Render biometrics grid if any of the 4 new params present
-          if (!isNaN(resp) || !isNaN(spo2) || !isNaN(calories) || !isNaN(steps)) {
+          // Render biometrics grid if any of the 7 params is present
+          if (!isNaN(hrv) || !isNaN(rhr) || !isNaN(sleep) ||
+              !isNaN(resp) || !isNaN(spo2) || !isNaN(calories) || !isNaN(steps)) {
             const section = document.getElementById('biometrics-section');
             if (section) {
-              if (!isNaN(resp))     { const el = document.getElementById('bio-resp');     if (el) el.textContent = resp.toFixed(1); }
+              if (!isNaN(hrv))      { const el = document.getElementById('bio-hrv');      if (el) el.textContent = Math.round(hrv); }
               if (!isNaN(spo2))     { const el = document.getElementById('bio-spo2');     if (el) el.textContent = spo2.toFixed(1); }
               if (!isNaN(calories)) { const el = document.getElementById('bio-calories'); if (el) el.textContent = Math.round(calories); }
               if (!isNaN(steps))    { const el = document.getElementById('bio-steps');    if (el) el.textContent = Math.round(steps).toLocaleString(); }
